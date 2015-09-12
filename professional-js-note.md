@@ -97,7 +97,7 @@ parseInt()  对于字符类型
 parseFloat()  字符类型
 
 ####String
-string最重要的一点是，字符串一旦创建不可被改变。（想一下内存中的状况就能理解了）
+string最重要的一点是，字符串一旦创建不可被改变。（在其他语言中，字符串作为引用类型保留，而js放弃了这个传统）
 
 字符串转换
 number，boolean，object，string都有toString()方法。
@@ -112,8 +112,150 @@ js中所有对象继承与Object，具有下面公共的属性和方法：
 5. toLocaleString()
 6. toString()
 7. valueOf()
+------
 
 操作符(略......)
+
+####布尔操作符
+！逻辑非
+&& 逻辑与
+|| 逻辑或
+
+！与任何值操作都返回一个逻辑布尔值
+！！ 两个一起用，相当于Boolean（），第一个！变成布尔值，第二个！就是他对应的布尔值
+```
+console.log(!!"blue"); //true
+console.log(!!0); //false
+console.log(!!NaN); //false
+```
+
+&& 逻辑与 短路操作
+```
+var found = true;
+var result = (found && someUndefinedVariable); // 后面的值求值出错，报错
+alert(result);  // 不会执行
+
+// 下面短路
+
+var found = false;
+var result = (found && someUndefinedVariable); // 后面的值求值出错，报错
+alert(result);  // false
+
+```
+
+|| 逻辑或 短路操作
+与逻辑与一样也是短路，只是逻辑不同而已
+js中常用的地方是：避免给变量赋null或undefined值
+`var myObject = preferredObject || backupObject`
+前面为真则返回前面的值，否则返回备用值。
+
+------
+
++ 操作符
+需要注意的是，操作数中如果有字符，由于考虑到连接字符串的操作，所以都会被转换为字符串来执行连接的操作。
+`var result = 2 + '3'; // 23`
+
+- 操作符
+遇到字符串会调用number（），因为减操作只能做数字的减法
+
+函数Function
+1. 函数自带arguments对象，传入的参数当做局部变量使用，并且于arguments中的内容同步更新。
+2. 没有重载，只能通过函数签名做出不同反应，模拟重载。
+
+##变量 作用域和内存问题
+（2015/09/10 11:26）
+1. 执行环境（execution context）
+2. 作用域（scope）
+3. this （execution context，或者其调用者的一个属性）
+
+我们都知道作用域是变量的边界，而程序如何确认这个边界？答案是由执行环境来确认。
+执行环境是一个对象，存放这个环境中的变量和函数。
+每个作用域都有一个执行环境的对象（叫做活动对象activation object）
+
+在全局执行的时候，只有一个activation object，并创建一个作用域链（scope chain），这个scope chain中第一个对象就是当前的activation object。而以后当子函数执行的时候，则会创建子activation object，并把它添加到作用域链中，然后子环境（execution context）被压入堆栈获得控制权，子环境中的代码根据scope chain中的activation object，一级一级的查找变量和函数来使用它们。当这个子函数执行完毕，则被堆栈弹出，于是子环境被销毁，控制权转回到上级执行环境。
+
+js通过scope chain 机制来实现作用域，而作用域背后由execution context的机制得以实现。
+
+this和arguments是函数的默认属性， this通常指他的调用者，而当函数没有显式的调用者时，就认为是全局环境调用了他。所以在全局环境中，也就是activation object有一个this属性，他的值等于window。
+
+##第五章 引用类型
+###Object
+定义复合数据。
+常规用途：用对象给函数传参数。
+
+--传递多个参数时，对必须值用命名参数传入，对多个可选参数用对象来封装。
+
+###Array
+检测数组：
+常规方法：`if(value instanceOf Array){'do something'};`
+
+ECMAScript5支持的： Array.isArray()方法。
+`if(Array.isArray(value)){'do something'};`
+
+转换方法：所有对象都有的toString(),valueOf(),toLocalString().
+
+但数组调用这些转换方法时，数组中的每一项被分别调用，因为读取数组的操作必须一项一项的来。
+
+join()方法
+join顾名思义加入，当然是让多项加入成为一项。所以join是数组的方法，数组才有多个项嘛。而返回值是string。
+
+join()接受一个参数作为分隔符，用于在字符串中分割字符。
+
+```
+var colors = ["red","green","blue"];
+console.log(colors.join()); // red,green,blue 不传参数，默认是逗号
+console.log(colors.join("|")); // red|green|blue
+```
+
+####栈方法（last-in-first-out）
+稍微想想（压栈-出栈）就知道，只需要进栈和出栈两个方法就行了，push(),pop().
+既然是后出，当然是从数组尾部进行操作。
+
+####队列方法（first-in-first-out）
+当然也需要两个方法（排队的场景），进队列的时候从后面进，用push()就可以了
+出的时候从前头出，需要shift()方法
+
+以上出栈和出队列的方法的会有返回值，就是出来的那个家伙本身。
+
+相似的，为了从相反的方向进出队列，就有了unshift()方法，同pop()配合使用。
+
+####重新排序方法
+reverse()反转数组
+sort()比较数组，参数是比较函数。
+
+####操作数组
+这几个方法都会有返回值
+concat()
+slice()
+splice()
+
+####位置方法
+indexOf() //顾名思义返回索引值
+lastIdexOf() //从后面开始查找
+
+####迭代方法
+every() 见p96
+some()
+filter()
+map()
+forEach()
+
+####归并方法
+reduce() 见p97
+reduceRight()
+
+###Date类
+感觉比较有用的是这个：
+```
+        var start = Date.now();
+        for(var i=0;i<1000000;i++){};
+        var end = Date.now();
+        console.log(end-start);
+```
+
+
+
+
 
 
 
