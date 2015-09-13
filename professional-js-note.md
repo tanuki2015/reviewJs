@@ -182,6 +182,51 @@ this和arguments是函数的默认属性， this通常指他的调用者，而当函数没有显式的调用者
 ###Object
 定义复合数据。
 常规用途：用对象给函数传参数。
+额外注意：BOM和DOM是宿主对象，他们不由ECMA-262所定义，而由宿主提供和定义。
+
+属性名和值的用法：
+```
+        var obj = {
+            name: "feifei",
+            age: 100,
+            sayHi: function(){
+                console.log("Hi");
+            }
+        };
+
+        // key是属性名，属性值用对象.key完整表示
+
+        for(var key in obj){
+            console.log(key + ": ",obj[key]);
+        }
+
+        // 检测是否为 公有属性
+
+        function hasPubProperty(attr,obj){
+            return (attr in obj) && !(obj.hasOwnProperty(attr));
+        }
+```
+属性有两种，1数据属性（常见的），2访问器属性
+数据属性调用默认的put方法设置，访问器属性则如下：
+
+```
+        // 访问器属性由getter 和 setter 设置方法
+        var person1 = {
+            _name: "feifei", // 约定的私有属性名前加下划线，但实际上还是公有的
+            get name(){ //语法不一样，无需function
+                console.log("read name: ");
+                return this._name;
+            },
+            set name(value){
+                console.log("write name: " + value);
+                this._name = value;
+            }
+        };
+        console.log(person1.name);  // read name: feifei 读操作调用了get name 方法
+        person1.name = "bobo";  // write name: bobo 写操作，调用了set name 方法
+```
+访问器属性的用途：当希望读取，写入属性同时会触发一些行为或操作的时候，就自己写get和set方法。
+
 
 --传递多个参数时，对必须值用命名参数传入，对多个可选参数用对象来封装。
 
