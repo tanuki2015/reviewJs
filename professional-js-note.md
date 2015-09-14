@@ -183,6 +183,7 @@ this和arguments是函数的默认属性， this通常指他的调用者，而当函数没有显式的调用者
 定义复合数据。
 常规用途：用对象给函数传参数。
 额外注意：BOM和DOM是宿主对象，他们不由ECMA-262所定义，而由宿主提供和定义。
+--传递多个参数时，对必须值用命名参数传入，对多个可选参数用对象来封装。
 
 属性名和值的用法：
 ```
@@ -227,8 +228,256 @@ this和arguments是函数的默认属性， this通常指他的调用者，而当函数没有显式的调用者
 ```
 访问器属性的用途：当希望读取，写入属性同时会触发一些行为或操作的时候，就自己写get和set方法。
 
+####关于原型（prototype）
+```
+        var Person = function(){};
+        var person1 = new Person;
 
---传递多个参数时，对必须值用命名参数传入，对多个可选参数用对象来封装。
+        console.log(Person.prototype.hasOwnProperty("constructor")); // true
+        console.log(person1.__proto__.hasOwnProperty("constructor")); // true
+        console.log(Person.prototype.hasOwnProperty == person1.__proto__.hasOwnProperty); // true
+        // 以上证明，构造函数的原型和其实例的原型是一个东西
+        // 只是他们在构造函数上用prototype这个名字，在实例上用__proto__这个名字（这是由浏览器实现的）
+        
+        console.log(Person.__proto__ == Function.prototype); // true
+        console.log(Person.__proto__ == Object.prototype); // false
+        // 这两句证明，构造函数的原型也指向创造他的原型--Function的原型。
+        // 这也说明，构造函数既是一个对象，也是一个函数，他有双重身份
+        // 所以他即有构造函数的属性prototype属性，也有普通对象的__proto__属性
+```
+
+原型对象的constructor属性，指向创建他的构造函数。而系统内置的几个构造函数，比如Object,Function,Array等，
+感觉就像是一个工厂模式，为了创建基本的对象而存在。
+constructor只跟创建他的函数有关，而跟继承无关。
+```
+        function FnA(){}
+        function FnB(){}
+
+        var objA = new FnA;
+
+        FnB.prototype = new FnA; // 这一句如果注释掉，下面结果将成为false，true，false
+        var objB = new FnB;
+
+        // objB现在继承于FnA，但他的构造函数还是创建他的函数
+        console.log(objB.constructor == objA.constructor); // true 这都是在原型上找到的
+        console.log(objB instanceof FnB); //true
+        console.log(objB instanceof FnA); //true
+```
+
+在for循环中输出私有属性
+
+```
+        var empty = {name:"feifei", age: 99};
+
+        for(var property in empty){
+            if(empty.hasOwnProperty(property)){
+                console.log(property);
+            }
+        }
+
+```
+
+####继承
+js是基于对象的语言（object base），在js中万物皆对象，是对世间事物的简单呈现。而面向对象是在对世间事物抽象思考后，有了类的概念，再派生出对象。
+就这么一个区别，造就了基于对象和面向对象完全不同的特征。
+
+三大特征：封装，继承和多态。
+
+封装大家天生都有，这个不用多说。
+
+继承：js中只有对象，当然谈不上什么继承，于是，为了让js有继承的特性，就有了各种各样的曲折的方法，最简单的是基于原型链的继承。
+而面向对象语言中，天生有类，类又有子类，所以说是天生自带继承，直接就可以实现。
+
+而多态，由于js没有函数签名，所以也只能婉转的去模拟。
+
+Object.create()方法，创造一个继承的对象。
+
+#####对象的继承，基于原型的方法
+
+```
+        // 使用字面量创建对象，其后台的操作如下Object.create方法
+        
+        var book = {
+            title: "the principles of Objected JavaScript"
+        };
+        
+        var book = Object.create(Object,{
+            title: {
+                configurable: true,
+                enumerable: true,
+                value: "the principles of Objected JavaScript",
+                writable: true
+            }
+        });
+```
+
+另一个例子：
+```
+        var person1 = {
+            name: "papa",
+            sayName: function(){
+                console.log(this.name);
+            }
+        };
+
+        var person2 = Object.create(person1,{
+            name: {
+                configurable: true,
+                enumerable: true,
+                value: "son",
+                writable: true
+            }
+        });
+
+        person1.sayName();  // papa
+        person2.sayName();  // son
+        console.log(person1.hasOwnProperty("sayName")); // true
+        console.log(person2.hasOwnProperty("sayName")); // false
+        console.log(person1.isPrototypeOf(person2)); // true
+
+        console.log(person2 instanceof person1);    // 报错，对象的继承，涉及不到实例，实例一定是由构造函数new出来的
+```
+
+#####对象的继承，基于构造函数
+为什么需要构造函数的继承？不是已经有原型链的继承了吗？
+因为原型链的继承只是简单的单个对象间的继承，而为了表现某个类别下的继承，就得用到构造函数的继承了。
+
+```
+ function MyConstructor(){}  // 当定义一个函数的时候，js引擎做了下面的事情
+        
+        MyConstructor.prototype = Object.create(Object.prototype,{
+            constructor:{
+                configurable: true,
+                enumerable: true,
+                value: MyConstructor,
+                writable: true
+            }
+        }); //系统创造一个继承的对象，并把它的constructor属性设置为其构造函数。
+        
+        console.log(MyConstructor.prototype.constructor == MyConstructor);  // 所以这里为 true
+        // 可见任何函数的原型上都会有这个constructor，不仅仅是构造函数。
+```
+
+传统的构造函数继承通常如下：
+
+```
+        function Rectangle(length,width){
+            this.length = length;
+            this.width = width;
+        }
+
+        Rectangle.prototype.getArea = function(){
+            return this.length * this.width;
+        };
+
+        Rectangle.prototype.toString = function(){
+            return "[Rectangle " + this.length + "x" + this.width + "]";
+        };
+        
+        // inherits from Rectangle
+        function Square(size){
+            this.length = size;
+            this.width = size;
+        }
+        
+        Square.prototype = new Rectangle();
+        Square.prototype.constructor = Square;
+        
+        Square.prototype.toString = function(){
+            return "[Square " + this.length + "x" + this.width + "]";
+        }
+```
+
+他的问题是在继承的时候，父类的构造函数必须运行，就有可能在参数改变的情况下，初始化出问题，所以有下面的改进方法：
+使用Object.create()方法,无需运行任何构造函数，没有参数的问题
+
+```
+        // inherits from Rectangle
+        function Square(size){
+            this.length = size;
+            this.width = size;
+        }
+        
+        
+        Square.prototype = Object.create(Rectangle.prototype,{
+            constructor: {
+                configurable: true,
+                enumerable: true,
+                value: Square,
+                writable: true
+            }
+        });
+
+        Square.prototype.toString = function(){
+            return "[Square " + this.length + "x" + this.width + "]";
+        };
+```
+
+通常来说，上面的继承方法已经够用了，但有时候子类需要调用父类的构造函数时，就需要用call，apply方法来借用。
+因为这种方式模仿了面向对象语言基于类的继承，所以也称为js的伪类继承。
+```
+        // inherits from Rectangle
+        function Square(size){
+            Rectangle.call(this,size,size); // 调用父类构造函数，下面的代码不变
+        }
+
+        Square.prototype = Object.create(Rectangle.prototype,{
+            constructor: {
+                configurable: true,
+                enumerable: true,
+                value: Square,
+                writable: true
+            }
+        });
+
+        Square.prototype.toString = function(){
+            return "[Square " + this.length + "x" + this.width + "]";
+        };
+        
+        // 下面这段用调用父类的方法toString完成同样的工作
+        Square.prototype.toString = function(){
+            var text = Rectangle.prototype.toString.call(this); // 这里的call指的也是这个类的实例对象。
+            return text.replace("Rectangle", "Square");
+        };   
+```
+
+####对象模式
+#####模块模式
+js中所有属性都是公开的，如果对象希望有自己的私有属性，那就必须用到 模块模式(自执行函数，产生闭包来隔离变量) 来解决问题。
+```
+        // 基本格式
+        var yourObject = (function(){
+                // private data
+                return {
+                    // public methods and properties
+                }
+        })();
+        
+        // 一个例子,暴露模块模式，定义的私有属性和方法放在闭包中，返回的内容（接口）用对象写在一起，比单纯的模块模式易读
+                var person = (function(){
+                    var age = 18;
+                    var getAge = function(){
+                        return age;
+                    };
+                    var growOlder = function(){
+                        age++;
+                    };
+        
+                    return {
+                        name:  "feifei",
+                        getAge: getAge,
+                        growOlder: growOlder
+                    }
+                })();
+        
+                console.log(person.age); // 私有属性,访问不到，undefined
+                console.log(person.getAge()); // 18
+                person.growOlder();
+                console.log(person.getAge()); // 19
+                console.log(person.name); // feifei
+```
+
+
 
 ###Array
 检测数组：
