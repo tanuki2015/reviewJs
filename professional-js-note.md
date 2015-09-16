@@ -386,9 +386,19 @@ Object.create()方法，创造一个继承的对象。
         Square.prototype.toString = function(){
             return "[Square " + this.length + "x" + this.width + "]";
         }
+
+// 这种继承实际上是中间转了一道弯，通过一个中间对象来让Square的prototype间接指向Rectangle的prototype，以此实现继承,下面可以证明：
+        console.log(Square.prototype.__proto__ == (new Rectangle).__proto__); // true
+        console.log(Square.prototype.__proto__ == Rectangle.prototype); // true
 ```
 
-他的问题是在继承的时候，父类的构造函数必须运行，就有可能在参数改变的情况下，初始化出问题，所以有下面的改进方法：
+这样的话，就导致2个变化。
+1. 由于new Rectangle()产生的中间对象不是原型对象，所以没有constructor属性，这就需要手动给他设置。
+2. 附带的好处是，从此后，在Square的原型上扩展方法的时候，会直接写到那个中间对象上面(这个时候已经是Square的原型对象了)，
+这就形成了Square类的方法，而不会覆盖其父类Rectangle的方法。
+
+#####构造函数继承的改进
+构造函数继承的问题是：在继承的时候，父类的构造函数必须运行，就有可能在参数改变的情况下，初始化出问题，所以有下面的改进方法：
 使用Object.create()方法,无需运行任何构造函数，没有参数的问题
 
 ```
@@ -411,8 +421,26 @@ Object.create()方法，创造一个继承的对象。
         Square.prototype.toString = function(){
             return "[Square " + this.length + "x" + this.width + "]";
         };
+        
+        // Object.create的第一个参数是父原型对象，create方法会复制一份这个对象，并把这个复制对象的__proto__指向父原型对象
+        // 这样，子类既可以使用到父类的一切，又可以明确继承关系
 ```
 
+一个额外话题：
+```
+ // 内置基础类的原型不能被更换，但可以被修改
+        Object.prototype = {
+            a: function(){}
+        };
+        console.log("a" in Object); // false
+        console.log(Object.prototype.hasOwnProperty("a")); // false
+        
+        // 可以修改，增加属性
+        Object.prototype.add = function(){};
+        console.log(Object.prototype.hasOwnProperty("add")); // true
+```
+
+#####伪类继承
 通常来说，上面的继承方法已经够用了，但有时候子类需要调用父类的构造函数时，就需要用call，apply方法来借用。
 因为这种方式模仿了面向对象语言基于类的继承，所以也称为js的伪类继承。
 ```
@@ -547,6 +575,79 @@ reduceRight()
         console.log(end-start);
 ```
 
+###Function类
+下面这个方法比较有意思，我们在sort方法中经常需要传入一个比较函数，比如：
+```
+        var data = [2,4,45,78,334,2,34,6,98]; // 要求排序
+
+        data.sort(function(a,b){
+            return a-b; // 返回﹣值，表示小的排在前面。
+        })
+
+        console.log(data);
+```
+
+但如果要让这样的数组对象排序：var data = [{name: "zz", age: 28},{name:"aa",age:29}];
+就必须在sort的比较函数中吧对象中的值取出来，这就用到了下面的技巧
+
+```
+       /*
+        * 比较函数，可以比较对象中的值
+        * 传入的propertyName会被替换成要比较的属性
+        * creatComparisonFunction()执行后，会返回propertyName被替换后的一个函数
+        * 这个返回后的函数就是sort需要的比较函数，由sort把数组的内容依次传递给object1,object2这两个参数
+        */
+        
+   function createComparisonFunction(propertyName){
+        return function (object1,object2){
+            var value1 = object1[propertyName];
+            var value2 = object2[propertyName];
+
+            if(value1 < value2){
+                return -1;
+            }else if (value1 > value2){
+                return 1;
+            }else {
+                return 0;
+            }
+        }
+    }
+        var data = [{name: "zz", age: 28},{name:"aa",age:29}];
+        data.sort(createComparisonFunction("name"));
+        console.log(data);
+```
+
+补充sort比较函数的小知识：
+```
+// sort方法给数组对象的内容排序
+        var arr = [{name:"张飞",age:28},{name:"刘备",age:32},{name:"关羽",age:29}];
+//        arr.sort(function(a,b){
+//            return parseInt(a.age) - parseInt(b.age);
+//        });
+//        console.log(arr);
+
+        // 中文用localCompare，调用了本地字符集作比较
+        arr.sort(function(a,b){
+            return a.name.localeCompare(b.name);
+        });
+        console.log(arr);
+```
+
+####Function中的两个特殊对象arguments和this
+arguments除了有保存参数的用途，arguments还有一个callee属性，这个属性指向拥有arguments的函数。
+其中一个应用场景是递归调用中把函数名和函数解耦和。
+```
+        // 计算阶乘的一个例子
+        function factorial(num){
+            if (num<=1){
+                return 1;
+            }else{
+                return num * arguments.callee(num-1); // 这里，factorial函数名被替换，耦合被解除
+            }
+        }
+```
+#####this
+函数内部另一个特殊对象，this引用的是 函数 据以执行的 环境对象。
 
 
 
